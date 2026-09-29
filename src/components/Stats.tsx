@@ -29,13 +29,13 @@ export function Stats() {
 
   return (
     <dl className="stats">
-      <Stat label={`Spent in ${year}`} value={moneyCompact(spent)} sub={`${ytd.length} monthly filings`} tone="out" delay={0} />
+      <Stat label={`Spent in ${year}`} value={moneyCompact(spent)} sub={`from ${ytd.length} monthly reports`} tone="out" delay={0} />
       <Stat label={`Raised in ${year}`} value={moneyCompact(raised)} sub={`${sign(raised - spent)}${moneyCompact(Math.abs(raised - spent))} vs. spent`} tone="in" delay={120} />
-      <Stat label="Cash on hand" value={moneyCompact(latest.cashOnHand)} sub={`as of ${latest.end}`} tone="" delay={240} />
+      <Stat label="Cash on hand" value={moneyCompact(latest.cashOnHand)} sub={`in the bank on ${latest.end}`} tone="" delay={240} />
       <Stat
-        label="Latest month, net"
+        label="Net, latest month"
         value={`${sign(net)}${moneyCompact(Math.abs(net))}`}
-        sub={`${moneyCompact(latest.disbursements)} out · ${moneyCompact(latest.receipts)} in`}
+        sub={`${moneyCompact(latest.receipts)} in − ${moneyCompact(latest.disbursements)} out`}
         tone={net >= 0 ? 'in' : 'out'}
         delay={360}
       />

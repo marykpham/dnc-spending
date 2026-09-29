@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
 import { Bar, BarChart, Cell, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { MonthlyTotal } from '../lib/data'
-import { moneyCompact, quarterOf } from '../lib/format'
+import { money, moneyCompact, quarterOf } from '../lib/format'
 import { useData } from '../lib/useData'
 import { axisTick, Tip } from './chart'
 import { Reveal } from './Reveal'
+import { SrTable } from './SrTable'
 import { Status } from './Status'
 
 export function OverTime() {
@@ -25,7 +26,7 @@ export function OverTime() {
     <section>
       <div className="toolbar">
         <div>
-          <h2>Disbursements over time</h2>
+          <h2>Spending over time</h2>
           {peak && (
             <p className="lede">
               Peak: <b>{moneyCompact(peak.total)}</b> in {peak.label}.
@@ -43,6 +44,7 @@ export function OverTime() {
       <Status data={data} error={error} />
       {data && (
         <Reveal wipe>
+        <div aria-hidden="true">
         <ResponsiveContainer width="100%" height={400}>
           <BarChart data={rows} barCategoryGap="22%">
             <CartesianGrid vertical={false} stroke="var(--rule)" strokeDasharray="2 4" />
@@ -56,8 +58,10 @@ export function OverTime() {
             </Bar>
           </BarChart>
         </ResponsiveContainer>
+        </div>
         </Reveal>
       )}
+      {data && <SrTable caption={`Money spent per ${mode}`} head={[mode === 'month' ? 'Month' : 'Quarter', 'Spent']} rows={rows.map((r) => [r.label, money(r.total)])} />}
     </section>
   )
 }

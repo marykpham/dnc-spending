@@ -53,7 +53,7 @@ export function TopPayees() {
       </div>
       <div>
         <h2>What it’s for</h2>
-        <p className="lede">FEC purpose categories. Share is of the categories shown.</p>
+        <p className="lede">How the FEC labels each payment. “Other” is a catch-all for payments that fit no specific label.</p>
         <Status data={cats.data} error={cats.error} />
         {cats.data && (
           <Reveal>

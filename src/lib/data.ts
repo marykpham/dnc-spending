@@ -25,7 +25,8 @@ const cache = new Map<string, Promise<unknown>>()
 export function load<T>(file: string): Promise<T> {
   let p = cache.get(file)
   if (!p) {
-    p = fetch(`${import.meta.env.BASE_URL}data/${file}`).then((r) => {
+    // 'no-cache' revalidates with the server (cheap 304s) so a redeploy is never masked by a stale browser copy.
+    p = fetch(`${import.meta.env.BASE_URL}data/${file}`, { cache: 'no-cache' }).then((r) => {
       if (!r.ok) throw new Error(`Failed to load ${file} (${r.status})`)
       return r.json()
     })

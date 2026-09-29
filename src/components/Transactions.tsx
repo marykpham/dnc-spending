@@ -19,6 +19,7 @@ export function Transactions() {
   const [rows, setRows] = useState<Txn[]>()
   const [error, setError] = useState<string>()
   const [query, setQuery] = useState('')
+  const [hideMemo, setHideMemo] = useState(true)
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'date', dir: -1 })
 
   useEffect(() => {
@@ -41,16 +42,18 @@ export function Transactions() {
   const filtered = useMemo(() => {
     if (!rows) return []
     const q = query.trim().toLowerCase()
-    const out = q
-      ? rows.filter((r) => `${r.payee} ${r.purpose} ${r.category}`.toLowerCase().includes(q))
-      : rows.slice()
+    const out = rows.filter(
+      (r) => (!hideMemo || !r.memo) && (!q || `${r.payee} ${r.purpose} ${r.category}`.toLowerCase().includes(q)),
+    )
     out.sort((a, b) => {
       const x = a[sort.key]
       const y = b[sort.key]
       return (x < y ? -1 : x > y ? 1 : 0) * sort.dir
     })
     return out
-  }, [rows, query, sort])
+  }, [rows, query, sort, hideMemo])
+
+  const memoCount = useMemo(() => rows?.filter((r) => r.memo).length ?? 0, [rows])
 
   const narrow = useMedia('(max-width: 700px)')
   const scroller = useRef<HTMLDivElement>(null)
@@ -98,6 +101,7 @@ export function Transactions() {
           <input
             type="search"
             placeholder="Search payee, purpose, category…"
+            aria-label="Search the ledger by payee, purpose or category"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -120,8 +124,20 @@ export function Transactions() {
       <Status data={meta.data && rows} error={meta.error ?? error} />
       {rows && (
         <>
-          <p className="muted">
-            {filtered.length.toLocaleString()} rows · {money(total)} total (memo items excluded from total)
+          <div className="ledger-meta">
+            <p className="muted" aria-live="polite">
+              {filtered.length.toLocaleString()} rows · {money(total)} total
+              {!hideMemo && ' (memo rows not counted)'}
+            </p>
+            <label className="toggle">
+              <input type="checkbox" checked={hideMemo} onChange={(e) => setHideMemo(e.target.checked)} />
+              <span className="track" aria-hidden />
+              Hide memo items{memoCount ? ` (${memoCount.toLocaleString()})` : ''}
+            </label>
+          </div>
+          <p className="memo-note">
+            <b>Memo items</b> are entries already counted elsewhere in the filing, listed for detail. They are never
+            added to totals.
           </p>
           <div className="table">
             <div className="row head" style={{ gridTemplateColumns: COLS }}>
@@ -131,13 +147,17 @@ export function Transactions() {
               {header('category', 'Category')}
               <span>Purpose</span>
             </div>
-            <div ref={scroller} className="body">
-              <div style={{ height: virt.getTotalSize(), position: 'relative' }}>
+            <div ref={scroller} className="body" tabIndex={0} role="region" aria-label="Disbursements list (scrollable)">
+              <div role="list" style={{ height: virt.getTotalSize(), position: 'relative' }}>
                 {virt.getVirtualItems().map((v) => {
                   const r = filtered[v.index]
                   return (
                     <div
                       key={r.id}
+                      role="listitem"
+                      aria-setsize={filtered.length}
+                      aria-posinset={v.index + 1}
+                      aria-label={`${r.date}, ${r.payee}, ${money(r.amount)}, ${r.category.replace(/_/g, ' ').toLowerCase()}, ${r.purpose}${r.memo ? ', memo item, not counted in totals' : ''}`}
                       className={`row${r.memo ? ' memo' : ''}`}
                       style={{
                         gridTemplateColumns: narrow ? undefined : COLS,
@@ -151,7 +171,10 @@ export function Transactions() {
                     >
                       <span>{r.date}</span>
                       <span className="num">{money(r.amount)}</span>
-                      <span title={r.payee}>{r.payee}</span>
+                      <span title={r.payee}>
+                        {r.memo && <em className="memo-tag">Memo</em>}
+                        {r.payee}
+                      </span>
                       <span>{r.category.replace(/_/g, ' ').toLowerCase()}</span>
                       <span title={r.purpose}>{r.purpose}</span>
                     </div>

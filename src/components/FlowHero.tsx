@@ -23,7 +23,9 @@ const bez = (p: Path, t: number): Pt => {
  * into rivers to the biggest payees. River width and particle share come from the real data.
  * The pointer scatters particles; the loop pauses off-screen and honors reduced motion.
  */
-export function FlowHero() {
+export function FlowHero({ paused = false }: { paused?: boolean }) {
+  const pausedRef = useRef(paused)
+  pausedRef.current = paused
   const wrap = useRef<HTMLDivElement>(null)
   const guides = useRef<HTMLCanvasElement>(null)
   const fg = useRef<HTMLCanvasElement>(null)
@@ -210,9 +212,9 @@ export function FlowHero() {
       }
       ctx.font = '500 10px "JetBrains Mono", monospace'
       ctx.fillStyle = `rgba(${MINT},0.9)`
-      ctx.fillText(`IN  ${moneyCompact(avgIn)} / MO`, 18, 22)
+      ctx.fillText(`RAISED  ${moneyCompact(avgIn)} / MO`, 18, 22)
       ctx.fillStyle = `rgba(${CORAL},0.9)`
-      ctx.fillText(`OUT  ${moneyCompact(avgOut)} / MO`, binX + 16, 22)
+      ctx.fillText(`SPENT  ${moneyCompact(avgOut)} / MO`, binX + 16, 22)
     }
 
     const t0 = performance.now()
@@ -257,7 +259,7 @@ export function FlowHero() {
       raf = requestAnimationFrame(loop)
       const dt = Math.min(0.05, (now - last) / 1000)
       last = now
-      if (!visible) return
+      if (!visible || pausedRef.current) return
       step(dt)
       render(now)
     }
@@ -295,7 +297,7 @@ export function FlowHero() {
   }, [reports.data, payees.data])
 
   return (
-    <div className="flow" ref={wrap} role="img" aria-label="Animated diagram: money raised flows through the DNC to its largest payees">
+    <div className="flow" ref={wrap} role="img" aria-label="Animated diagram: money raised flows into the DNC and out to its largest payees. The same figures are listed in the Top payees tab.">
       <canvas ref={guides} />
       <canvas ref={fg} />
     </div>

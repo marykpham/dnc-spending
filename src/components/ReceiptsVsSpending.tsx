@@ -1,10 +1,11 @@
 import { Area, AreaChart, Bar, CartesianGrid, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useState } from 'react'
 import type { Report } from '../lib/data'
-import { moneyCompact } from '../lib/format'
+import { money, moneyCompact } from '../lib/format'
 import { useData } from '../lib/useData'
 import { axisTick, Tip } from './chart'
 import { Reveal } from './Reveal'
+import { SrTable } from './SrTable'
 import { Status } from './Status'
 
 export function ReceiptsVsSpending() {
@@ -35,6 +36,7 @@ export function ReceiptsVsSpending() {
       {rows && (
         <>
           <Reveal wipe>
+          <div aria-hidden="true">
           <ResponsiveContainer width="100%" height={340}>
             <ComposedChart data={rows} barGap={2} barCategoryGap="24%">
               <CartesianGrid vertical={false} stroke="var(--rule)" strokeDasharray="2 4" />
@@ -45,9 +47,11 @@ export function ReceiptsVsSpending() {
               <Bar dataKey="disbursements" name="Spent" fill="var(--accent)" radius={[2, 2, 0, 0]} isAnimationActive={false} />
             </ComposedChart>
           </ResponsiveContainer>
+          </div>
           </Reveal>
           <h3>Cash on hand</h3>
           <Reveal wipe>
+          <div aria-hidden="true">
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={rows}>
               <defs>
@@ -63,7 +67,13 @@ export function ReceiptsVsSpending() {
               <Area type="monotone" dataKey="cashOnHand" name="Cash on hand" stroke="var(--ink)" strokeWidth={2} fill="url(#coh)" isAnimationActive={false} />
             </AreaChart>
           </ResponsiveContainer>
+          </div>
           </Reveal>
+          <SrTable
+            caption="Money raised, spent and cash on hand for each reporting period"
+            head={['Period ending', 'Raised', 'Spent', 'Cash on hand']}
+            rows={rows.map((r) => [r.end, money(r.receipts), money(r.disbursements), money(r.cashOnHand)])}
+          />
         </>
       )}
     </section>
