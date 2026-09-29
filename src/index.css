@@ -103,7 +103,7 @@ h1 { margin: 0; font-family: var(--display); font-size: clamp(3.4rem, 11.5vw, 10
 .tabs button:hover { color: var(--text); }
 .tabs button.on { color: var(--bg); }
 .ind { position: absolute; z-index: 0; top: 5px; bottom: 5px; left: 0; border-radius: 999px; background: var(--text); transition: transform 0.6s cubic-bezier(0.34, 1.4, 0.5, 1), width 0.6s cubic-bezier(0.34, 1.4, 0.5, 1); }
-.panel { padding: 44px 0 8px; animation: panel-in 0.7s var(--ease) both; }
+.panel { min-height: 90vh; padding: 44px 0 8px; animation: panel-in 0.7s var(--ease) both; }
 @keyframes panel-in { from { opacity: 0; transform: translateY(28px) scale(0.985); filter: blur(8px); } }
 
 /* ---------- content ---------- */
@@ -160,7 +160,7 @@ input:focus, select:focus, button:focus-visible { outline: 2px solid var(--hub);
 .row > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row > span:nth-child(1), .row > span:nth-child(2) { font-family: var(--mono); font-size: 0.82rem; }
 .row > span:nth-child(2) { text-align: right; font-weight: 500; color: var(--out); }
-.row > span:nth-child(4) { font: 0.75rem var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--in); }
+.row > span:nth-child(4) { font: 0.75rem var(--mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--in); }
 .row > span:nth-child(5) { color: var(--dim); }
 .row:hover:not(.head) { background: var(--wash); }
 .row.head { height: 40px; font: 500 0.75rem var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); border-bottom-color: var(--line); }

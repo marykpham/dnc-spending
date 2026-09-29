@@ -7,7 +7,7 @@ import { useMedia } from '../lib/useMedia'
 import { Status } from './Status'
 
 type SortKey = 'date' | 'amount' | 'payee' | 'category'
-const COLS = '110px 130px minmax(180px, 1.2fr) 1fr minmax(160px, 1.5fr)'
+const COLS = '96px 104px minmax(150px, 1.2fr) minmax(140px, 0.9fr) minmax(120px, 1.4fr)'
 
 function csvEscape(s: string) {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
@@ -175,7 +175,7 @@ export function Transactions() {
                         {r.memo && <em className="memo-tag">Memo</em>}
                         {r.payee}
                       </span>
-                      <span>{r.category.replace(/_/g, ' ').toLowerCase()}</span>
+                      <span title={r.category.replace(/_/g, ' ').toLowerCase()}>{r.category.replace(/_/g, ' ').toLowerCase()}</span>
                       <span title={r.purpose}>{r.purpose}</span>
                     </div>
                   )
