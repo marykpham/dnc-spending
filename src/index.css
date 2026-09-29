@@ -14,7 +14,9 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
-html, body { overflow-x: hidden; }
+/* `clip`, not `hidden`: hidden on both html and body makes body a second scroll container,
+   whose scroll position gets reset when a tab switch changes the page height */
+html, body { overflow-x: clip; }
 body {
   margin: 0; color: var(--text); font-family: var(--sans); line-height: 1.55; -webkit-font-smoothing: antialiased;
   background:
@@ -103,7 +105,7 @@ h1 { margin: 0; font-family: var(--display); font-size: clamp(3.4rem, 11.5vw, 10
 .tabs button:hover { color: var(--text); }
 .tabs button.on { color: var(--bg); }
 .ind { position: absolute; z-index: 0; top: 5px; bottom: 5px; left: 0; border-radius: 999px; background: var(--text); transition: transform 0.6s cubic-bezier(0.34, 1.4, 0.5, 1), width 0.6s cubic-bezier(0.34, 1.4, 0.5, 1); }
-.panel { min-height: 90vh; padding: 44px 0 8px; animation: panel-in 0.7s var(--ease) both; }
+.panel { padding: 44px 0 8px; animation: panel-in 0.7s var(--ease) both; }
 @keyframes panel-in { from { opacity: 0; transform: translateY(28px) scale(0.985); filter: blur(8px); } }
 
 /* ---------- content ---------- */
