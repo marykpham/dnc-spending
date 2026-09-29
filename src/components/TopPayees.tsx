@@ -5,9 +5,9 @@ import { useData } from '../lib/useData'
 import { Reveal } from './Reveal'
 import { Status } from './Status'
 
-function Ranked({ rows, note }: { rows: { name: string; total: number; sub?: string }[]; note?: string }) {
+function Ranked({ rows, whole, note }: { rows: { name: string; total: number; sub?: string }[]; whole: number; note?: string }) {
   const max = rows[0]?.total || 1
-  const sum = rows.reduce((s, r) => s + r.total, 0)
+  const sum = whole || rows.reduce((s, r) => s + r.total, 0) // share of everything, not just the rows shown
   return (
     <ol className="ranked">
       {rows.map((r, i) => (
@@ -42,6 +42,7 @@ export function TopPayees() {
         {payees.data && (
           <Reveal>
           <Ranked
+            whole={payees.data.reduce((s, p) => s + p.total, 0)}
             rows={payees.data.slice(0, 15).map((p) => ({
               name: titleCase(p.name),
               total: p.total,
@@ -58,6 +59,7 @@ export function TopPayees() {
         {cats.data && (
           <Reveal>
           <Ranked
+            whole={cats.data.reduce((s, c) => s + c.total, 0)}
             rows={cats.data.slice(0, 15).map((c) => ({
               name: titleCase(c.category.replace(/_/g, ' ')),
               total: c.total,
