@@ -209,7 +209,9 @@ export default function App() {
           </div>
           <div>
             <p className="foot-h">About</p>
-            <p>An independent project, not affiliated with the FEC or the DNC. Figures are for information only.</p>
+            <p>An independent project, not affiliated with the FEC or the DNC. Figures are for information only. Visit counts are
+              measured with cookieless analytics that collect no personal data.
+            </p>
           </div>
         </div>
         {meta?.truncated && <p className="error">This is a partial dataset (limited fetch).</p>}
