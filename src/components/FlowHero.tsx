@@ -54,6 +54,8 @@ export function FlowHero() {
     const rateOut = 80 * (avgOut / peak)
 
     let W = 0, H = 0, binX = 0, labelW = 0
+    let nameFont = '500 13px "Instrument Sans", system-ui, sans-serif'
+    let subFont = '400 11px "JetBrains Mono", monospace'
     let hub = { x: 0, y: 0, r: 0 }
     let inPaths: Path[] = []
     let outPaths: Path[] = []
@@ -103,9 +105,11 @@ export function FlowHero() {
       g.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       const small = W < 640
-      labelW = small ? Math.min(150, W * 0.38) : Math.min(260, W * 0.3)
+      labelW = small ? Math.min(190, W * 0.5) : Math.min(260, W * 0.3)
+      nameFont = `500 ${small ? 12 : 13}px "Instrument Sans", system-ui, sans-serif`
+      subFont = `400 ${small ? 10 : 11}px "JetBrains Mono", monospace`
       binX = W - labelW
-      hub = { x: W * (small ? 0.34 : 0.4), y: H / 2, r: small ? 34 : 50 }
+      hub = { x: W * (small ? 0.24 : 0.4), y: H / 2, r: small ? 27 : 50 }
       inPaths = [0.2, 0.5, 0.8].map((f, i) => [
         { x: -10, y: H * f },
         { x: hub.x * 0.5, y: H * f },
@@ -137,7 +141,7 @@ export function FlowHero() {
       }
       inPaths.forEach((p) => bed(p, 6, MINT, 0.07))
       outPaths.forEach((p, i) => bed(p, 1 + bins[i].share * 22, CORAL, 0.09))
-      ctx.font = '500 13px "Instrument Sans", system-ui, sans-serif'
+      ctx.font = nameFont
       bins.forEach((b) => {
         let s = b.name
         while (s.length > 3 && ctx.measureText(s).width > labelW - 34) s = s.slice(0, -1)
@@ -198,10 +202,10 @@ export function FlowHero() {
         ctx.fillRect(binX - 2, b.y - h / 2, 4, h)
         ctx.shadowBlur = 0
         ctx.fillStyle = `rgba(236,239,246,${0.82 + b.glow * 0.18})`
-        ctx.font = '500 13px "Instrument Sans", system-ui, sans-serif'
+        ctx.font = nameFont
         ctx.fillText(b.label, binX + 16, b.y - 8)
         ctx.fillStyle = 'rgba(135,145,167,1)'
-        ctx.font = '400 11px "JetBrains Mono", monospace'
+        ctx.font = subFont
         ctx.fillText(`${moneyCompact(b.total)} · ${(b.share * 100).toFixed(0)}%`, binX + 16, b.y + 9)
       }
       ctx.font = '500 10px "JetBrains Mono", monospace'

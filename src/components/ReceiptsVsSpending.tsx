@@ -1,4 +1,5 @@
 import { Area, AreaChart, Bar, CartesianGrid, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { useState } from 'react'
 import type { Report } from '../lib/data'
 import { moneyCompact } from '../lib/format'
 import { useData } from '../lib/useData'
@@ -8,7 +9,8 @@ import { Status } from './Status'
 
 export function ReceiptsVsSpending() {
   const { data, error } = useData<Report[]>('reports.json')
-  const rows = data?.map((r) => ({ ...r, label: r.end.slice(0, 7) }))
+  const [range, setRange] = useState<12 | 36 | 0>(12)
+  const rows = data?.slice(range ? -range : 0).map((r) => ({ ...r, label: r.end.slice(0, 7) }))
 
   return (
     <section>
@@ -16,6 +18,13 @@ export function ReceiptsVsSpending() {
         <div>
           <h2>Money in, money out</h2>
           <p className="lede">Raised vs. spent per filing period, and the cash left over.</p>
+        </div>
+        <div className="seg">
+          {([12, 36, 0] as const).map((r) => (
+            <button key={r} className={range === r ? 'on' : ''} onClick={() => setRange(r)}>
+              {r === 12 ? '12 mo' : r === 36 ? '3 yrs' : 'All'}
+            </button>
+          ))}
         </div>
         <div className="legend">
           <span><i style={{ background: 'var(--teal)' }} />Raised</span>

@@ -11,10 +11,10 @@ import type { Meta } from './lib/data'
 import { useData } from './lib/useData'
 
 const TABS = [
-  ['time', 'Over time', OverTime],
-  ['payees', 'Top payees', TopPayees],
-  ['cash', 'Receipts vs. spending', ReceiptsVsSpending],
-  ['txns', 'Ledger', Transactions],
+  ['time', 'Over time', 'Timeline', OverTime],
+  ['payees', 'Top payees', 'Payees', TopPayees],
+  ['cash', 'Receipts vs. spending', 'Cash', ReceiptsVsSpending],
+  ['txns', 'Ledger', 'Ledger', Transactions],
 ] as const
 type TabId = (typeof TABS)[number][0]
 const fromHash = (): TabId => TABS.find((t) => t[0] === location.hash.slice(1))?.[0] ?? 'time'
@@ -24,7 +24,7 @@ export default function App() {
   const { data: meta } = useData<Meta>('meta.json')
   const btns = useRef<(HTMLButtonElement | null)[]>([])
   const [ind, setInd] = useState({ x: 0, w: 0 })
-  const Active = TABS.find((t) => t[0] === tab)![2]
+  const Active = TABS.find((t) => t[0] === tab)![3]
 
   useEffect(() => {
     const onHash = () => setTab(fromHash())
@@ -89,7 +89,7 @@ export default function App() {
         <Stats />
         <nav className="tabs">
           <span className="ind" style={{ transform: `translateX(${ind.x}px)`, width: ind.w }} />
-          {TABS.map(([id, label], i) => (
+          {TABS.map(([id, label, short], i) => (
             <button
               key={id}
               ref={(el) => {
@@ -101,7 +101,8 @@ export default function App() {
                 history.replaceState(null, '', `#${id}`)
               }}
             >
-              {label}
+              <span className="lg">{label}</span>
+              <span className="sh">{short}</span>
             </button>
           ))}
         </nav>

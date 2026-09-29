@@ -3,6 +3,7 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { load, type Meta, type Txn } from '../lib/data'
 import { money } from '../lib/format'
 import { useData } from '../lib/useData'
+import { useMedia } from '../lib/useMedia'
 import { Status } from './Status'
 
 type SortKey = 'date' | 'amount' | 'payee' | 'category'
@@ -51,13 +52,16 @@ export function Transactions() {
     return out
   }, [rows, query, sort])
 
+  const narrow = useMedia('(max-width: 700px)')
   const scroller = useRef<HTMLDivElement>(null)
   const virt = useVirtualizer({
     count: filtered.length,
     getScrollElement: () => scroller.current,
-    estimateSize: () => 40,
+    estimateSize: () => (narrow ? 72 : 40),
     overscan: 12,
   })
+
+  useEffect(() => virt.measure(), [narrow, virt])
 
   const total = useMemo(() => filtered.reduce((s, r) => (r.memo ? s : s + r.amount), 0), [filtered])
 
@@ -97,6 +101,17 @@ export function Transactions() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
+          <span className="sort-ctl">
+            <select value={sort.key} onChange={(e) => setSort((s) => ({ ...s, key: e.target.value as SortKey }))} aria-label="Sort by">
+              <option value="date">Sort: Date</option>
+              <option value="amount">Sort: Amount</option>
+              <option value="payee">Sort: Payee</option>
+              <option value="category">Sort: Category</option>
+            </select>
+            <button onClick={() => setSort((s) => ({ ...s, dir: (-s.dir as 1 | -1) }))} aria-label="Reverse sort order">
+              {sort.dir === 1 ? '↑' : '↓'}
+            </button>
+          </span>
           <button onClick={exportCsv} disabled={!filtered.length}>
             Export CSV
           </button>
@@ -125,7 +140,7 @@ export function Transactions() {
                       key={r.id}
                       className={`row${r.memo ? ' memo' : ''}`}
                       style={{
-                        gridTemplateColumns: COLS,
+                        gridTemplateColumns: narrow ? undefined : COLS,
                         position: 'absolute',
                         top: 0,
                         left: 0,
