@@ -122,7 +122,9 @@ async function main() {
   }
 
   // Memo items are already counted elsewhere; exclude from aggregates, keep in the table.
-  const txns = [...all.values()].sort((a, b) => b.date.localeCompare(a.date))
+  // A cycle spans two calendar years; late-reported rows dated before that window are stragglers.
+  const windowStart = `${Math.min(...TXN_CYCLES) - 1}-01-01`
+  const txns = [...all.values()].filter((t) => t.date >= windowStart).sort((a, b) => b.date.localeCompare(a.date))
   const counted = txns.filter((t) => !t.memo && t.amount > 0)
 
   // Official monthly totals come from the filing reports, which cover every cycle cheaply.
@@ -175,7 +177,7 @@ async function main() {
     years: [...years.keys()].sort().reverse(),
     transactionCount: txns.length,
     truncated: Number.isFinite(MAX_PAGES),
-    detailFrom: txns.length ? txns.at(-1)!.date : null,
+    detailFrom: windowStart,
   })
   console.log(`Wrote ${txns.length} transactions across ${years.size} years.`)
 }
