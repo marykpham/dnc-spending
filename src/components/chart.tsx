@@ -5,6 +5,8 @@ export const axisTick = { fontFamily: 'var(--mono)', fontSize: 11, fill: 'var(--
 
 export function Tip({ active, payload, label }: TooltipContentProps) {
   if (!active || !payload?.length) return null
+  const months = payload[0].payload?.months
+  const partial = months && months < 3 ? months : 0
   return (
     <div className="tip">
       <div className="tip-label">{label}</div>
@@ -15,6 +17,7 @@ export function Tip({ active, payload, label }: TooltipContentProps) {
           <b>{money(Number(p.value))}</b>
         </div>
       ))}
+      {partial && <div className="tip-label">Partial quarter: {partial} of 3 months so far</div>}
     </div>
   )
 }

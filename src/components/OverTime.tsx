@@ -14,10 +14,14 @@ export function OverTime() {
 
   const rows = useMemo(() => {
     if (!data) return []
-    if (mode === 'month') return data.map((d) => ({ label: d.month, total: d.total }))
-    const q = new Map<string, number>()
-    for (const d of data) q.set(quarterOf(d.month), (q.get(quarterOf(d.month)) ?? 0) + d.total)
-    return [...q].map(([label, total]) => ({ label, total }))
+    if (mode === 'month') return data.map((d) => ({ label: d.month, total: d.total, months: 1 }))
+    const q = new Map<string, { total: number; months: number }>()
+    for (const d of data) {
+      const k = quarterOf(d.month)
+      const cur = q.get(k) ?? { total: 0, months: 0 }
+      q.set(k, { total: cur.total + d.total, months: cur.months + 1 })
+    }
+    return [...q].map(([label, v]) => ({ label, ...v }))
   }, [data, mode])
   const max = Math.max(0, ...rows.map((r) => r.total))
   const peak = rows.find((r) => r.total === max)
@@ -35,7 +39,7 @@ export function OverTime() {
         </div>
         <div className="seg">
           {(['month', 'quarter'] as const).map((m) => (
-            <button key={m} className={mode === m ? 'on' : ''} onClick={() => setMode(m)}>
+            <button key={m} className={mode === m ? 'on' : ''} aria-pressed={mode === m} onClick={() => setMode(m)}>
               {m === 'month' ? 'Monthly' : 'Quarterly'}
             </button>
           ))}
@@ -53,7 +57,7 @@ export function OverTime() {
             <Tooltip content={Tip} cursor={{ fill: 'var(--wash)' }} />
             <Bar dataKey="total" name="Disbursed" radius={[2, 2, 0, 0]} isAnimationActive={false}>
               {rows.map((r) => (
-                <Cell key={r.label} fill={r.total === max ? 'var(--accent)' : 'var(--bar)'} />
+                <Cell key={r.label} fill={r.total === max ? 'var(--accent)' : 'var(--bar)'} fillOpacity={r.months < 3 && mode === 'quarter' ? 0.45 : 1} />
               ))}
             </Bar>
           </BarChart>
@@ -61,7 +65,7 @@ export function OverTime() {
         </div>
         </Reveal>
       )}
-      {data && <SrTable caption={`Money spent per ${mode}`} head={[mode === 'month' ? 'Month' : 'Quarter', 'Spent']} rows={rows.map((r) => [r.label, money(r.total)])} />}
+      {data && <SrTable caption={`Money spent per ${mode}`} head={[mode === 'month' ? 'Month' : 'Quarter', 'Spent']} rows={rows.map((r) => [r.label + (mode === 'quarter' && r.months < 3 ? ` (${r.months} of 3 months)` : ''), money(r.total)])} />}
     </section>
   )
 }
