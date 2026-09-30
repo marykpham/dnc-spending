@@ -3,6 +3,7 @@ name: Update FEC data
 on:
   schedule:
     - cron: '17 9 * * *' # daily
+    - cron: '47 */6 19-22 * *' # the DNC files its monthly report around the 20th; catch it quickly
   workflow_dispatch:
     inputs:
       full:

@@ -1,7 +1,8 @@
 // Fetches DNC disbursements + filing reports from OpenFEC and writes static JSON to public/data.
 // Env: FEC_API_KEY (default DEMO_KEY), CYCLES (comma list of two-year periods, default last 2),
 //      MAX_PAGES (per cycle, for quick local runs), FULL=1 (re-download every row instead of only
-//      rows since the newest stored one), ALLOW_STALE=1 (exit 0 and keep old data if the API rate-limits us).
+//      rows since the newest stored one, and skip the run entirely when the committee has filed nothing new),
+//      ALLOW_STALE=1 (exit 0 and keep old data if the API rate-limits us).
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
 
 const API = 'https://api.open.fec.gov/v1'
@@ -129,10 +130,47 @@ async function loadExisting(): Promise<Txn[]> {
 
 const round = (n: number) => Math.round(n * 100) / 100
 
+interface Latest {
+  file: number
+  date: string
+}
+
+// Newest filing (amendments get their own, higher file number). One cheap request, so a daily run
+// can tell whether anything was filed before paying for the paged Schedule B download.
+async function latestFiling(since?: string): Promise<Latest | undefined> {
+  const data = await get(`/committee/${COMMITTEE_ID}/filings/`, {
+    per_page: 20,
+    sort: '-receipt_date',
+    ...(since ? { min_receipt_date: since } : {}),
+  })
+  let best: Latest | undefined
+  for (const r of data.results ?? []) {
+    if (r.file_number && (!best || r.file_number > best.file)) best = { file: r.file_number, date: String(r.receipt_date).slice(0, 10) }
+  }
+  return best
+}
+
+async function storedLatest(): Promise<Latest | undefined> {
+  try {
+    const m = JSON.parse(await readFile(new URL('meta.json', OUT), 'utf8'))
+    return m.latestFiling
+  } catch {
+    return undefined
+  }
+}
+
 async function main() {
   await mkdir(OUT, { recursive: true })
   const committee = (await get(`/committee/${COMMITTEE_ID}/`, {})).results?.[0]
   console.log(`Committee: ${committee?.name} (${COMMITTEE_ID}); transactions ${TXN_CYCLES.join(', ')}; reports ${REPORT_CYCLES.join(', ')}`)
+
+  const stored = FULL ? undefined : await storedLatest()
+  const latest = await latestFiling(stored?.date)
+  if (stored && (!latest || latest.file <= stored.file)) {
+    console.log(`No filings newer than #${stored.file} (${stored.date}); nothing to fetch.`)
+    return
+  }
+  console.log(`Latest filing #${latest?.file} (${latest?.date})${stored ? `, was #${stored.file}` : ''}`)
 
   const reports = new Map<string, Awaited<ReturnType<typeof fetchReports>>[number]>()
   for (const cycle of REPORT_CYCLES) {
@@ -213,6 +251,7 @@ async function main() {
     transactionCount: txns.length,
     truncated: Number.isFinite(MAX_PAGES) && !minDate,
     detailFrom: windowStart,
+    latestFiling: latest,
   })
   console.log(`Wrote ${txns.length} transactions across ${years.size} years.`)
 }
