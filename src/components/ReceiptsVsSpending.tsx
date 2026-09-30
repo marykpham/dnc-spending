@@ -12,6 +12,7 @@ export function ReceiptsVsSpending() {
   const { data, error } = useData<Report[]>('reports.json')
   const [range, setRange] = useState<12 | 36 | 0>(12)
   const rows = data?.slice(range ? -range : 0).map((r) => ({ ...r, label: r.end.slice(0, 7) }))
+  const amended = rows?.filter((r) => r.amended)
 
   return (
     <section>
@@ -49,6 +50,24 @@ export function ReceiptsVsSpending() {
           </ResponsiveContainer>
           </div>
           </Reveal>
+          {amended && amended.length > 0 && (
+            <p className="memo-note">
+              <b>Amended:</b> the committee corrected its report for{' '}
+              {amended.map((r, i) => (
+                <span key={r.end}>
+                  {i > 0 && ', '}
+                  {r.pdf ? (
+                    <a href={r.pdf} target="_blank" rel="noreferrer">
+                      {r.label}<span className="sr-only"> amended report (opens in a new tab)</span>
+                    </a>
+                  ) : (
+                    r.label
+                  )}
+                </span>
+              ))}
+              . The figures shown are the corrected ones; the <a href="#filings">Filings</a> tab lists both versions.
+            </p>
+          )}
           <h3>Cash on hand</h3>
           <Reveal wipe>
           <div aria-hidden="true">
@@ -72,7 +91,7 @@ export function ReceiptsVsSpending() {
           <SrTable
             caption="Money raised, spent and cash on hand for each reporting period"
             head={['Period ending', 'Raised', 'Spent', 'Cash on hand']}
-            rows={rows.map((r) => [r.end, money(r.receipts), money(r.disbursements), money(r.cashOnHand)])}
+            rows={rows.map((r) => [r.amended ? `${r.end} (amended)` : r.end, money(r.receipts), money(r.disbursements), money(r.cashOnHand)])}
           />
         </>
       )}

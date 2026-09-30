@@ -2,18 +2,21 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { FlowHero } from './components/FlowHero'
 import { KineticTitle } from './components/KineticTitle'
 import { OverTime } from './components/OverTime'
+import { Filings } from './components/Filings'
 import { ReceiptsVsSpending } from './components/ReceiptsVsSpending'
 import { Stats } from './components/Stats'
 import { Ticker } from './components/Ticker'
 import { TopPayees } from './components/TopPayees'
 import { Transactions } from './components/Transactions'
 import type { Meta } from './lib/data'
+import { seenAtLoad, writeSeen } from './lib/seenFiling'
 import { useData } from './lib/useData'
 
 const TABS = [
   ['time', 'Over time', 'Timeline', OverTime],
   ['payees', 'Top payees', 'Payees', TopPayees],
   ['cash', 'Money in vs. out', 'In / out', ReceiptsVsSpending],
+  ['filings', 'Filings', 'Filings', Filings],
   ['txns', 'Ledger', 'Ledger', Transactions],
 ] as const
 type TabId = (typeof TABS)[number][0]
@@ -26,15 +29,28 @@ export default function App() {
   const btns = useRef<(HTMLButtonElement | null)[]>([])
   const mainRef = useRef<HTMLElement>(null)
   const [ind, setInd] = useState({ x: 0, w: 0 })
+  const [viewedFilings, setViewedFilings] = useState(tab === 'filings')
+  const latestFile = meta?.latestFiling?.file
+  const unseen = latestFile !== undefined && seenAtLoad !== undefined && latestFile > seenAtLoad && !viewedFilings
   const Active = TABS.find((t) => t[0] === tab)![3]
 
   const select = (id: TabId) => {
     setTab(id)
+    if (id === 'filings') setViewedFilings(true)
     history.replaceState(null, '', `#${id}`)
   }
 
+  // Opening the Filings tab counts as having seen the newest filing (first-time visitors just get a baseline).
   useEffect(() => {
-    const onHash = () => setTab(fromHash())
+    if (latestFile !== undefined && (tab === 'filings' || seenAtLoad === undefined)) writeSeen(latestFile)
+  }, [tab, latestFile])
+
+  useEffect(() => {
+    const onHash = () => {
+      const t = fromHash()
+      setTab(t)
+      if (t === 'filings') setViewedFilings(true)
+    }
     addEventListener('hashchange', onHash)
     return () => removeEventListener('hashchange', onHash)
   }, [])
@@ -177,6 +193,12 @@ export default function App() {
                 <span className="sh" aria-hidden>
                   {short}
                 </span>
+                {id === 'filings' && unseen && (
+                  <>
+                    <span className="dot" aria-hidden />
+                    <span className="sr-only"> (new filing)</span>
+                  </>
+                )}
               </button>
             ))}
           </div>

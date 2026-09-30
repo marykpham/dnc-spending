@@ -25,7 +25,17 @@ type Params = Record<string, string | number>
 async function get(path: string, params: Params, attempt = 0): Promise<any> {
   const url = new URL(API + path)
   for (const [k, v] of Object.entries({ ...params, api_key: KEY })) url.searchParams.set(k, String(v))
-  const res = await fetch(url)
+  let res: Response
+  try {
+    res = await fetch(url)
+  } catch (e) {
+    // Network-level failures (e.g. UND_ERR_HEADERS_TIMEOUT) are as transient as a 5xx.
+    if (attempt >= 12) throw e
+    const wait = Math.min(2 ** attempt * 2000, 30000)
+    console.warn(`  ${(e as Error).cause ? String((e as any).cause.code ?? e) : e} on ${path}; retrying in ${wait / 1000}s`)
+    await new Promise((r) => setTimeout(r, wait))
+    return get(path, params, attempt + 1)
+  }
   if ((res.status === 429 || res.status >= 500) && attempt < 12) {
     const wait = Math.min(2 ** attempt * 2000, 30000)
     const limit = res.headers.get('x-ratelimit-limit')
@@ -230,6 +240,10 @@ async function main() {
     for (const r of await fetchReports(cycle)) reports.set(r.end, r)
   }
 
+  const windowStart = `${Math.min(...TXN_CYCLES) - 1}-01-01`
+  console.log('Filings')
+  const filings = await fetchFilings(windowStart)
+
   const all = new Map<string, Txn>()
   const existing = FULL ? [] : await loadExisting()
   let minDate: string | undefined
@@ -248,7 +262,6 @@ async function main() {
 
   // Memo items are already counted elsewhere; exclude from aggregates, keep in the table.
   // A cycle spans two calendar years; late-reported rows dated before that window are stragglers.
-  const windowStart = `${Math.min(...TXN_CYCLES) - 1}-01-01`
   const txns = [...all.values()].filter((t) => t.date >= windowStart).sort((a, b) => b.date.localeCompare(a.date))
   const counted = txns.filter((t) => !t.memo && t.amount > 0)
 
@@ -289,7 +302,7 @@ async function main() {
       .slice(0, 200),
   )
   await write('reports.json', [...reports.values()].sort((a, b) => a.end.localeCompare(b.end)))
-  await write('filings.json', await fetchFilings(windowStart))
+  await write('filings.json', filings)
 
   const years = new Map<string, Txn[]>()
   for (const t of txns) years.set(t.date.slice(0, 4), [...(years.get(t.date.slice(0, 4)) ?? []), t])
