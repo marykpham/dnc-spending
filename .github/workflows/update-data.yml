@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: '17 9 * * *' # daily
   workflow_dispatch:
+    inputs:
+      full:
+        description: Re-download every row instead of only recent ones
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -21,6 +26,8 @@ jobs:
       - run: npm run fetch-data
         env:
           FEC_API_KEY: ${{ secrets.FEC_API_KEY }}
+          FULL: ${{ inputs.full && '1' || '' }}
+          ALLOW_STALE: '1'
       - name: Commit changes
         run: |
           git config user.name "github-actions[bot]"

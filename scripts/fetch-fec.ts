@@ -1,13 +1,18 @@
 // Fetches DNC disbursements + filing reports from OpenFEC and writes static JSON to public/data.
 // Env: FEC_API_KEY (default DEMO_KEY), CYCLES (comma list of two-year periods, default last 2),
-//      MAX_PAGES (per cycle, for quick local runs).
-import { mkdir, writeFile } from 'node:fs/promises'
+//      MAX_PAGES (per cycle, for quick local runs), FULL=1 (re-download every row instead of only
+//      rows since the newest stored one), ALLOW_STALE=1 (exit 0 and keep old data if the API rate-limits us).
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
 
 const API = 'https://api.open.fec.gov/v1'
 const COMMITTEE_ID = 'C00010603'
 const KEY = process.env.FEC_API_KEY || 'DEMO_KEY'
 const OUT = new URL('../public/data/', import.meta.url)
 const MAX_PAGES = Number(process.env.MAX_PAGES || Infinity)
+const FULL = process.env.FULL === '1'
+const ALLOW_STALE = process.env.ALLOW_STALE === '1'
+// Incremental runs re-fetch this many days before the newest stored row, to pick up amendments and late filings.
+const OVERLAP_DAYS = 21
 
 const thisCycle = Math.ceil(new Date().getFullYear() / 2) * 2
 const list = (v: string | undefined, fallback: number[]) => (v ? v.split(',').map(Number) : fallback)
@@ -45,7 +50,7 @@ const SUFFIX = /\b(L\.?L\.?C\.?|INC\.?|CORP\.?|CORPORATION|CO\.?|LTD\.?|L\.?L\.?
 const normalize = (name: string) =>
   name.toUpperCase().replace(SUFFIX, '').replace(/[^A-Z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim()
 
-async function fetchDisbursements(cycle: number): Promise<Txn[]> {
+async function fetchDisbursements(cycle: number, minDate?: string): Promise<Txn[]> {
   const rows: Txn[] = []
   let cursor: Params = {}
   for (let page = 1; page <= MAX_PAGES; page++) {
@@ -53,6 +58,7 @@ async function fetchDisbursements(cycle: number): Promise<Txn[]> {
       committee_id: COMMITTEE_ID,
       two_year_transaction_period: cycle,
       per_page: 100,
+      ...(minDate ? { min_disbursement_date: minDate } : {}),
       sort: '-disbursement_date',
       sort_hide_null: 'false',
       ...cursor,
@@ -102,6 +108,22 @@ async function fetchReports(cycle: number) {
     }))
 }
 
+// Rows from the previous run, so a normal run only needs to fetch what is new.
+async function loadExisting(): Promise<Txn[]> {
+  try {
+    const files = (await readdir(OUT)).filter((f) => /^transactions-\d{4}\.json$/.test(f))
+    const rows: Txn[] = []
+    for (const f of files) {
+      for (const t of JSON.parse(await readFile(new URL(f, OUT), 'utf8'))) {
+        rows.push({ ...t, payeeKey: normalize(t.payee) || 'UNKNOWN' })
+      }
+    }
+    return rows
+  } catch {
+    return []
+  }
+}
+
 const round = (n: number) => Math.round(n * 100) / 100
 
 async function main() {
@@ -116,9 +138,19 @@ async function main() {
   }
 
   const all = new Map<string, Txn>()
+  const existing = FULL ? [] : await loadExisting()
+  let minDate: string | undefined
+  if (existing.length) {
+    const newest = existing.reduce((m, t) => (t.date > m ? t.date : m), '')
+    const d = new Date(newest + 'T00:00:00Z')
+    d.setUTCDate(d.getUTCDate() - OVERLAP_DAYS)
+    minDate = d.toISOString().slice(0, 10)
+    for (const t of existing) all.set(t.id, t)
+    console.log(`Incremental: ${existing.length} stored rows, fetching since ${minDate}`)
+  }
   for (const cycle of TXN_CYCLES) {
     console.log(`Cycle ${cycle}: disbursements`)
-    for (const t of await fetchDisbursements(cycle)) all.set(t.id, t)
+    for (const t of await fetchDisbursements(cycle, minDate)) all.set(t.id, t)
   }
 
   // Memo items are already counted elsewhere; exclude from aggregates, keep in the table.
@@ -176,13 +208,18 @@ async function main() {
     committee: { id: COMMITTEE_ID, name: committee?.name ?? 'Democratic National Committee' },
     years: [...years.keys()].sort().reverse(),
     transactionCount: txns.length,
-    truncated: Number.isFinite(MAX_PAGES),
+    truncated: Number.isFinite(MAX_PAGES) && !minDate,
     detailFrom: windowStart,
   })
   console.log(`Wrote ${txns.length} transactions across ${years.size} years.`)
 }
 
 main().catch((e) => {
+  if (ALLOW_STALE && /\b429\b/.test(String(e))) {
+    // Nothing has been written yet (files are only written after all fetching), so the old data stays intact.
+    console.log(`::warning::FEC API rate limit hit; keeping existing data. ${e}`)
+    return
+  }
   console.error(e)
   process.exit(1)
 })
