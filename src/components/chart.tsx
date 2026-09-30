@@ -17,7 +17,7 @@ export function Tip({ active, payload, label }: TooltipContentProps) {
           <b>{money(Number(p.value))}</b>
         </div>
       ))}
-      {partial && <div className="tip-label">Partial quarter: {partial} of 3 months so far</div>}
+      {partial > 0 && <div className="tip-label">Partial quarter: {partial} of 3 months so far</div>}
     </div>
   )
 }

@@ -3,7 +3,7 @@
 //      MAX_PAGES (per cycle, for quick local runs), FULL=1 (re-download every row instead of only
 //      rows since the newest stored one, and skip the run entirely when the committee has filed nothing new),
 //      ALLOW_STALE=1 (exit 0 and keep old data if the API rate-limits us).
-import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
+import { access, mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
 
 const API = 'https://api.open.fec.gov/v1'
 const COMMITTEE_ID = 'C00010603'
@@ -109,7 +109,58 @@ async function fetchReports(cycle: number) {
       receipts: r.total_receipts_period ?? 0,
       disbursements: r.total_disbursements_period ?? 0,
       cashOnHand: r.cash_on_hand_end_period ?? 0,
+      file: r.file_number as number,
+      amended: r.amendment_indicator !== 'N',
+      pdf: (r.pdf_url as string | null) ?? undefined,
     }))
+}
+
+export interface Filing {
+  file: number
+  form: string
+  title: string
+  received: string
+  start?: string
+  end?: string
+  receipts?: number
+  disbursements?: number
+  cashOnHand?: number
+  amendment: boolean // this filing corrects an earlier one
+  superseded: boolean // a later filing replaced this one
+  pdf?: string
+  html?: string
+}
+
+// Every filing the committee has made since the start of the detail window (amendments included).
+async function fetchFilings(since: string): Promise<Filing[]> {
+  const out: Filing[] = []
+  for (let page = 1; ; page++) {
+    const data = await get(`/committee/${COMMITTEE_ID}/filings/`, {
+      per_page: 100,
+      page,
+      sort: '-receipt_date',
+      min_receipt_date: since,
+    })
+    for (const r of data.results) {
+      out.push({
+        file: r.file_number,
+        form: r.form_type,
+        title: r.document_description || r.form_type,
+        received: String(r.receipt_date).slice(0, 10),
+        start: r.coverage_start_date?.slice(0, 10),
+        end: r.coverage_end_date?.slice(0, 10),
+        receipts: r.total_receipts ?? undefined,
+        disbursements: r.total_disbursements ?? undefined,
+        cashOnHand: r.cash_on_hand_end_period ?? undefined,
+        amendment: r.amendment_indicator === 'A',
+        superseded: r.is_amended === true,
+        pdf: r.pdf_url ?? undefined,
+        html: r.html_url ?? undefined,
+      })
+    }
+    if (page >= (data.pagination?.pages ?? 1)) break
+  }
+  return out.sort((a, b) => b.received.localeCompare(a.received) || b.file - a.file)
 }
 
 // Rows from the previous run, so a normal run only needs to fetch what is new.
@@ -166,7 +217,8 @@ async function main() {
 
   const stored = FULL ? undefined : await storedLatest()
   const latest = await latestFiling(stored?.date)
-  if (stored && (!latest || latest.file <= stored.file)) {
+  const haveFilings = await access(new URL('filings.json', OUT)).then(() => true, () => false)
+  if (stored && haveFilings && (!latest || latest.file <= stored.file)) {
     console.log(`No filings newer than #${stored.file} (${stored.date}); nothing to fetch.`)
     return
   }
@@ -237,6 +289,7 @@ async function main() {
       .slice(0, 200),
   )
   await write('reports.json', [...reports.values()].sort((a, b) => a.end.localeCompare(b.end)))
+  await write('filings.json', await fetchFilings(windowStart))
 
   const years = new Map<string, Txn[]>()
   for (const t of txns) years.set(t.date.slice(0, 4), [...(years.get(t.date.slice(0, 4)) ?? []), t])
