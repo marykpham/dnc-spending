@@ -27,7 +27,10 @@ async function get(path: string, params: Params, attempt = 0): Promise<any> {
   const res = await fetch(url)
   if ((res.status === 429 || res.status >= 500) && attempt < 12) {
     const wait = Math.min(2 ** attempt * 2000, 30000)
-    console.warn(`  ${res.status} on ${path}; retrying in ${wait / 1000}s`)
+    const limit = res.headers.get('x-ratelimit-limit')
+    const left = res.headers.get('x-ratelimit-remaining')
+    const keyKind = KEY === 'DEMO_KEY' ? 'DEMO_KEY' : `custom key (${KEY.length} chars)`
+    console.warn(`  ${res.status} on ${path}; ${keyKind}, ratelimit ${left ?? '?'}/${limit ?? '?'}; retrying in ${wait / 1000}s`)
     await new Promise((r) => setTimeout(r, wait))
     return get(path, params, attempt + 1)
   }
